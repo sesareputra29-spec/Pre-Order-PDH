@@ -1,1 +1,43 @@
 @import "tailwindcss";
+
+@layer utilities {
+  @media print {
+    body, html {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+      font-size: 11pt !important;
+      overflow: visible !important;
+      height: auto !important;
+    }
+
+    header, aside, nav, button, input[type="file"], .print\:hidden {
+      display: none !important;
+    }
+
+    main {
+      overflow: visible !important;
+      height: auto !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+
+    tr, td, th {
+      page-break-inside: avoid !important;
+    }
+
+    .shadow-xs, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl {
+      box-shadow: none !important;
+    }
+
+    .border, .border-b, .border-t {
+      border-color: #d1d5db !important;
+    }
+  }
+}

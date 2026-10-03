@@ -35,7 +35,8 @@ import {
   Filter,
   Search,
   Menu,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 
 import { PanitiaPDHSettings } from './PanitiaPDHSettings';
@@ -45,6 +46,7 @@ import { PanitiaProductionManagement } from './PanitiaProductionManagement';
 import { PanitiaImportExport } from './PanitiaImportExport';
 import { PanitiaStudentManagement } from './PanitiaStudentManagement';
 import { PanitiaUserAccessManagement } from './PanitiaUserAccessManagement';
+import { PanitiaReportsManagement } from './PanitiaReportsManagement';
 
 interface PanitiaLayoutProps {
   user: User;
@@ -54,11 +56,12 @@ interface PanitiaLayoutProps {
 type PanitiaTab =
   | 'dashboard'
   | 'pesanan'
-  | 'mahasiswa'
   | 'pembayaran'
   | 'produksi'
-  | 'pengaturan_pdh'
+  | 'laporan'
+  | 'mahasiswa'
   | 'import_export'
+  | 'pengaturan_pdh'
   | 'user_akses'
   | 'pengaturan_sistem';
 
@@ -274,7 +277,8 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
         { id: 'pesanan', label: 'Pesanan', icon: <Package className="w-4 h-4" /> },
         { id: 'pembayaran', label: 'Pembayaran', icon: <CreditCard className="w-4 h-4" /> },
-        { id: 'produksi', label: 'Produksi', icon: <Factory className="w-4 h-4" /> }
+        { id: 'produksi', label: 'Produksi', icon: <Factory className="w-4 h-4" /> },
+        { id: 'laporan', label: 'Laporan', icon: <FileText className="w-4 h-4" /> }
       ]
     },
     {
@@ -1115,6 +1119,10 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
             <PanitiaProductionManagement user={user} />
           )}
 
+          {activeTab === 'laporan' && (
+            <PanitiaReportsManagement user={user} />
+          )}
+
           {activeTab === 'import_export' && (
             <PanitiaImportExport user={user} onRefreshAuditLogs={loadData} />
           )}
@@ -1124,7 +1132,7 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
           )}
 
           {/* Placeholders for other menus */}
-          {!['dashboard', 'pengaturan_sistem', 'pengaturan_pdh', 'pembayaran', 'pesanan', 'produksi', 'import_export', 'mahasiswa', 'user_akses'].includes(activeTab) && (
+          {!['dashboard', 'pengaturan_sistem', 'pengaturan_pdh', 'pembayaran', 'pesanan', 'produksi', 'laporan', 'import_export', 'mahasiswa', 'user_akses'].includes(activeTab) && (
             <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-xs text-center space-y-3">
               <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mx-auto">
                 <Layers className="w-6 h-6" />
