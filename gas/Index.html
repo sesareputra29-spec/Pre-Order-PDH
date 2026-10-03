@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><?= CONFIG.APP_NAME ?></title>
+  <!-- Tailwind CSS CDN for Google Apps Script HtmlService -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Custom App Styles */
+    .badge-panitia {
+      background-color: #EEF2FF;
+      color: #4F46E5;
+      border: 1px solid #C7D2FE;
+    }
+    .badge-mahasiswa {
+      background-color: #ECFDF5;
+      color: #059669;
+      border: 1px solid #A7F3D0;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #F3F4F6;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #D1D5DB;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans antialiased min-h-screen flex flex-col">
+  <div id="app" class="flex-1 flex flex-col min-h-screen">
+    <!-- App Container dynamically injected by Scripts.html -->
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="text-center">
+        <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-gray-600 font-medium">Memuat PDH Campus Order System...</p>
+      </div>
+    </div>
+  </div>
+
+  <?!= include('Scripts'); ?>
+</body>
+</html>
