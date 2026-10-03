@@ -36,7 +36,8 @@ import {
   Search,
   Menu,
   X,
-  FileText
+  FileText,
+  Compass
 } from 'lucide-react';
 
 import { PanitiaPDHSettings } from './PanitiaPDHSettings';
@@ -47,6 +48,7 @@ import { PanitiaImportExport } from './PanitiaImportExport';
 import { PanitiaStudentManagement } from './PanitiaStudentManagement';
 import { PanitiaUserAccessManagement } from './PanitiaUserAccessManagement';
 import { PanitiaReportsManagement } from './PanitiaReportsManagement';
+import { PanitiaRoadmapGuide } from './PanitiaRoadmapGuide';
 
 interface PanitiaLayoutProps {
   user: User;
@@ -55,6 +57,7 @@ interface PanitiaLayoutProps {
 
 type PanitiaTab =
   | 'dashboard'
+  | 'panduan'
   | 'pesanan'
   | 'pembayaran'
   | 'produksi'
@@ -294,6 +297,12 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
         { id: 'pengaturan_pdh', label: 'Pengaturan PDH', icon: <Shirt className="w-4 h-4" /> },
         { id: 'user_akses', label: 'User & Akses', icon: <UserCheck className="w-4 h-4" /> },
         { id: 'pengaturan_sistem', label: 'Pengaturan Sistem', icon: <Settings className="w-4 h-4" /> }
+      ]
+    },
+    {
+      group: 'BANTUAN',
+      items: [
+        { id: 'panduan', label: 'Roadmap Panduan', icon: <Compass className="w-4 h-4" /> }
       ]
     }
   ];
@@ -1099,6 +1108,10 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
             </div>
           )}
 
+          {activeTab === 'panduan' && (
+            <PanitiaRoadmapGuide onNavigate={(tab) => setActiveTab(tab as PanitiaTab)} />
+          )}
+
           {activeTab === 'pesanan' && (
             <PanitiaOrderManagement user={user} />
           )}
@@ -1132,7 +1145,7 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
           )}
 
           {/* Placeholders for other menus */}
-          {!['dashboard', 'pengaturan_sistem', 'pengaturan_pdh', 'pembayaran', 'pesanan', 'produksi', 'laporan', 'import_export', 'mahasiswa', 'user_akses'].includes(activeTab) && (
+          {!['dashboard', 'panduan', 'pengaturan_sistem', 'pengaturan_pdh', 'pembayaran', 'pesanan', 'produksi', 'laporan', 'import_export', 'mahasiswa', 'user_akses'].includes(activeTab) && (
             <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-xs text-center space-y-3">
               <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mx-auto">
                 <Layers className="w-6 h-6" />

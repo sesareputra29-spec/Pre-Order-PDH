@@ -26,18 +26,20 @@ import {
   Mail,
   CheckCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Compass
 } from 'lucide-react';
 
 import { StudentOrderForm } from './StudentOrderForm';
 import { StudentOrderHistory } from './StudentOrderHistory';
 import { StudentProductionProgress } from './StudentProductionProgress';
+import { StudentRoadmapGuide } from './StudentRoadmapGuide';
 
 interface MahasiswaLayoutProps {
   user: User;
 }
 
-type MahasiswaTab = 'beranda' | 'pesan' | 'pesanan_saya' | 'pembayaran' | 'progres';
+type MahasiswaTab = 'beranda' | 'panduan' | 'pesan' | 'pesanan_saya' | 'pembayaran' | 'progres';
 
 export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
   const [activeTab, setActiveTab] = useState<MahasiswaTab>('beranda');
@@ -104,7 +106,8 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
     { id: 'pesan', label: 'Pesan PDH', icon: <ShoppingBag className="w-4 h-4" /> },
     { id: 'pesanan_saya', label: 'Pesanan Saya', icon: <Clock className="w-4 h-4" /> },
     { id: 'pembayaran', label: 'Pembayaran', icon: <CreditCard className="w-4 h-4" /> },
-    { id: 'progres', label: 'Progres PDH', icon: <Activity className="w-4 h-4" /> }
+    { id: 'progres', label: 'Progres PDH', icon: <Activity className="w-4 h-4" /> },
+    { id: 'panduan', label: 'Panduan & Roadmap', icon: <Compass className="w-4 h-4" /> }
   ];
 
   return (
@@ -414,6 +417,10 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
           </div>
         )}
 
+        {activeTab === 'panduan' && (
+          <StudentRoadmapGuide user={user} onNavigate={(tab) => setActiveTab(tab as MahasiswaTab)} />
+        )}
+
         {activeTab === 'pesan' && (
           masterData ? (
             <StudentOrderForm
@@ -439,7 +446,7 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
         )}
 
         {/* Placeholders for other Mahasiswa views */}
-        {!['beranda', 'pesan', 'pesanan_saya', 'pembayaran', 'progres'].includes(activeTab) && (
+        {!['beranda', 'panduan', 'pesan', 'pesanan_saya', 'pembayaran', 'progres'].includes(activeTab) && (
           <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-xs text-center space-y-3">
             <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mx-auto">
               <Shirt className="w-6 h-6" />
