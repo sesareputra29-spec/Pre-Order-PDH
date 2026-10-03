@@ -58,32 +58,12 @@ function saveSimPOPeriods(periods: POPeriod[]) {
 function getSimNotifications(): NotificationRecord[] {
   const data = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
   if (data) {
-    try { return JSON.parse(data); } catch(e) {}
+    try {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return parsed;
+    } catch(e) {}
   }
-  const defaultNotifs: NotificationRecord[] = [
-    {
-      notification_id: 'NTF-INIT-01',
-      nim: '240101001',
-      type: 'ACCOUNT_VERIFIED',
-      title: 'Akun Terverifikasi',
-      message: 'Selamat! Akun Anda telah terverifikasi. Anda dapat langsung melakukan pemesanan baju PDH.',
-      read_status: false,
-      created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-      email_sent: true
-    },
-    {
-      notification_id: 'NTF-INIT-02',
-      nim: '240101001',
-      type: 'REGISTRATION',
-      title: 'Registrasi Akun Berhasil',
-      message: 'Akun Anda berhasil dibuat. Selamat datang di Portal PDH Campus Order System.',
-      read_status: true,
-      created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-      email_sent: true
-    }
-  ];
-  localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(defaultNotifs));
-  return defaultNotifs;
+  return [];
 }
 
 function saveSimNotifications(notifs: NotificationRecord[]) {
@@ -197,47 +177,14 @@ function getSimOrders(): any[] {
   if (data) {
     try {
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        // Strip out old mock sample order if present
+        const clean = parsed.filter((o) => o.order_id !== 'ORD-SAMPLE-01');
+        return clean;
+      }
     } catch(e) {}
   }
-
-  const defaultOrders = [
-    {
-      order_id: 'ORD-SAMPLE-01',
-      order_number: 'PDH-20261002-1001',
-      user_id: 'USR-MHS-01',
-      order_type: 'PRIBADI',
-      status: 'PENDING_PAYMENT',
-      payment_status: 'MENUNGGU APPROVAL',
-      payment_method: 'TRANSFER',
-      total_amount: 185000,
-      buyer_name: 'Ahmad Mahasiswa',
-      buyer_nim: '240101001',
-      buyer_class: '01MJSP001',
-      buyer_whatsapp: '081234567890',
-      payment_proof_file_id: 'DRV-PROOF-SAMPLE-01',
-      payment_proof_url: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&q=80',
-      payment_uploaded_at: new Date(Date.now() - 3600000).toISOString(),
-      item_count: 1,
-      items: [
-        {
-          item_id: 'ITM-01',
-          order_id: 'ORD-SAMPLE-01',
-          size_code: 'M',
-          custom_name: 'Ahmad Mahasiswa',
-          quantity: 1,
-          unit_price: 185000,
-          subtotal: 185000,
-          student_name: 'Ahmad Mahasiswa',
-          nim: '240101001',
-          class_name: '01MJSP001'
-        }
-      ],
-      created_at: new Date(Date.now() - 7200000).toISOString()
-    }
-  ];
-  localStorage.setItem('pdh_gas_sim_orders', JSON.stringify(defaultOrders));
-  return defaultOrders;
+  return [];
 }
 
 function saveSimOrders(orders: any[]) {
@@ -353,19 +300,13 @@ function getSimUsers() {
 
 function getSimAuditLogs(): AuditLogEntry[] {
   const data = localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS);
-  if (data) return JSON.parse(data);
-  const seed: AuditLogEntry[] = [
-    {
-      log_id: 'LOG-20261002-INIT',
-      timestamp: new Date().toISOString(),
-      user_id: 'SYSTEM',
-      action: 'INIT_DATABASE',
-      entity: 'SYSTEM',
-      details: 'Inisialisasi database terpusat Google Sheets & Google Drive PDH_CAMPUS'
-    }
-  ];
-  localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(seed));
-  return seed;
+  if (data) {
+    try {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return parsed;
+    } catch(e) {}
+  }
+  return [];
 }
 
 function addSimAuditLog(userId: string, action: string, entity: string, details: string) {

@@ -33,7 +33,9 @@ import {
   Check,
   RotateCcw,
   Filter,
-  Search
+  Search,
+  Menu,
+  X
 } from 'lucide-react';
 
 import { PanitiaPDHSettings } from './PanitiaPDHSettings';
@@ -66,9 +68,12 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
     return (saved as PanitiaTab) || 'dashboard';
   });
 
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   const setActiveTab = (tab: PanitiaTab) => {
     setActiveTabState(tab);
     sessionStorage.setItem('pdh_panitia_active_tab', tab);
+    setIsMobileSidebarOpen(false);
   };
   const [tables, setTables] = useState<SheetSchemaSummary | null>(null);
   const [driveStructure, setDriveStructure] = useState<DriveFolderStructure | null>(null);
@@ -292,9 +297,65 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
   const allMenuItems = menuGroups.flatMap((g) => g.items);
 
   return (
-    <div className="flex h-[calc(100vh-61px)] bg-gray-100 overflow-hidden">
-      {/* Sidebar Navigation */}
-      <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col flex-shrink-0 border-r border-slate-800">
+    <div className="flex h-[calc(100vh-61px)] bg-gray-100 overflow-hidden relative">
+      {/* Mobile & Tablet Drawer Backdrop Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs transition-opacity lg:hidden"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile & Tablet Slide-in Drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-slate-300 flex flex-col shadow-2xl transition-transform duration-300 ease-in-out lg:hidden ${
+          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-200">Navigasi Panitia</span>
+            <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-mono">PANITIA</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            title="Tutup Menu"
+            aria-label="Tutup Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto p-3 space-y-4 text-xs font-medium custom-scrollbar">
+          {menuGroups.map((grp) => (
+            <div key={grp.group} className="space-y-1">
+              <div className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                {grp.group}
+              </div>
+              {grp.items.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition cursor-pointer text-xs ${
+                    activeTab === item.id
+                      ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                      : 'hover:bg-slate-800/80 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Desktop Static Sidebar Navigation */}
+      <aside className="hidden lg:flex lg:w-64 bg-slate-900 text-slate-300 flex-col flex-shrink-0 border-r border-slate-800">
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Navigasi Panitia</span>
           <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-mono">PANITIA</span>
@@ -323,43 +384,44 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
             </div>
           ))}
         </nav>
-
-        {/* System Exporter Shortcut (Chusust AI Studio Preview) */}
-        {!isNativeGAS && (
-          <div className="p-3 border-t border-slate-800">
-            <button
-              onClick={onOpenGASExporter}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold transition cursor-pointer"
-            >
-              <Code className="w-3.5 h-3.5" />
-              <span>Ekspor Kode GAS</span>
-            </button>
-          </div>
-        )}
       </aside>
 
       {/* Main Workspace Area */}
-      <main className="flex-1 flex flex-col overflow-y-auto bg-gray-50">
+      <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden bg-gray-50">
         {/* View Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-3.5 flex items-center justify-between shadow-2xs">
-          <div>
-            <h2 className="text-base font-bold text-gray-900 capitalize">
-              {allMenuItems.find((m) => m.id === activeTab)?.label}
-            </h2>
-            <p className="text-xs text-gray-500">
-              Portal Pengelolaan Pemesanan &amp; Logistik PDH Kampus
-            </p>
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between shadow-2xs gap-3">
+          <div className="flex items-center gap-3">
+            {/* Hamburger Button for Mobile & Tablet (< lg) */}
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center p-2.5 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition cursor-pointer shadow-2xs"
+              title="Buka Menu Navigasi"
+              aria-label="Buka Menu Navigasi"
+            >
+              <Menu className="w-5 h-5 text-gray-800" />
+            </button>
+
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-gray-900 capitalize">
+                {allMenuItems.find((m) => m.id === activeTab)?.label}
+              </h2>
+              <p className="text-[11px] sm:text-xs text-gray-500 truncate max-w-[200px] sm:max-w-none">
+                Portal Pengelolaan Pemesanan &amp; Logistik PDH Kampus
+              </p>
+            </div>
           </div>
+
           <div className="flex items-center gap-2">
-            <span className="text-xs px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-semibold flex items-center gap-1.5">
+            <span className="text-xs px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-semibold flex items-center gap-1.5 whitespace-nowrap">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Sistem Aktif
+              <span className="hidden sm:inline">Sistem Aktif</span>
             </span>
           </div>
         </div>
 
-        {/* View Content */}
-        <div className="p-6 space-y-6">
+        {/* View Content Container with Responsive Padding */}
+        <div className="p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-7xl w-full mx-auto">
           {activeTab === 'dashboard' && (
             <div className="space-y-6 animate-fade-in">
               {/* Operational Banner */}

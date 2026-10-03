@@ -76,60 +76,47 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenGASExporte
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-2.5 sticky top-0 z-30 shadow-2xs flex items-center justify-between">
+    <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-2 sticky top-0 z-30 shadow-2xs flex items-center justify-between gap-2">
       {/* Brand Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 min-w-0">
         <div
-          className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold shadow-xs ${
+          className={`w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white font-bold shadow-xs flex-shrink-0 ${
             isPanitia ? 'bg-indigo-600 shadow-indigo-100' : 'bg-emerald-600 shadow-emerald-100'
           }`}
         >
-          <Shirt className="w-5 h-5" />
+          <Shirt className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-bold text-gray-900 text-sm sm:text-base leading-tight">PDH Campus Order</h1>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+            <h1 className="font-bold text-gray-900 text-xs sm:text-base leading-tight truncate">PDH Campus Order</h1>
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border ${
+              className={`text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full uppercase border whitespace-nowrap ${
                 isPanitia
                   ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                   : 'bg-emerald-50 text-emerald-700 border-emerald-200'
               }`}
             >
-              {isPanitia ? 'PORTAL PANITIA' : 'PORTAL MAHASISWA'}
+              {isPanitia ? 'PANITIA' : 'MAHASISWA'}
             </span>
           </div>
-          <p className="text-xs text-gray-500">Sistem Pemesanan Resmi Kampus</p>
+          <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block">Sistem Pemesanan Resmi Kampus</p>
         </div>
       </div>
 
       {/* User Actions */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
         {/* Notification Bell Dropdown */}
         <NotificationDropdown user={user} />
-
-        {/* Panitia Only: GAS Exporter Button */}
-        {isPanitia && (
-          <button
-            type="button"
-            onClick={onOpenGASExporter}
-            title="Lihat & Salin Kode Google Apps Script"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition border border-slate-200 cursor-pointer"
-          >
-            <Code className="w-3.5 h-3.5 text-indigo-600" />
-            <span className="hidden sm:inline">Kode GAS</span>
-          </button>
-        )}
 
         {/* Account Menu Dropdown */}
         <div className="relative" ref={accountMenuRef}>
           <button
             type="button"
             onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-            className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 transition cursor-pointer"
+            className="min-h-[44px] flex items-center gap-2 bg-gray-50 hover:bg-gray-100 px-2.5 sm:px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 transition cursor-pointer"
           >
             <div
-              className={`w-6 h-6 rounded-lg flex items-center justify-center text-white text-[11px] font-bold ${
+              className={`w-6 h-6 rounded-lg flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 ${
                 isPanitia ? 'bg-indigo-600' : 'bg-emerald-600'
               }`}
             >

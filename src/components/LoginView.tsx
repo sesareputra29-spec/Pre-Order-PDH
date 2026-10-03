@@ -778,45 +778,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
             )}
           </div>
         )}
-
-        {/* Quick Testing Accounts Section */}
-        <div className="pt-4 border-t border-gray-100 space-y-3">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-            <span className="flex items-center gap-1 text-indigo-600">
-              <Sparkles className="w-3.5 h-3.5" /> Akun Testing Development
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('admin', '123')}
-              className="p-3 bg-indigo-50/60 hover:bg-indigo-100/80 border border-indigo-200/60 rounded-xl text-left transition group cursor-pointer"
-            >
-              <div className="text-xs font-bold text-indigo-900 group-hover:text-indigo-700">Portal Panitia</div>
-              <div className="text-[10px] text-indigo-600/80 mt-0.5 font-mono">admin / 123</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickFill('mhs', '123')}
-              className="p-3 bg-emerald-50/60 hover:bg-emerald-100/80 border border-emerald-200/60 rounded-xl text-left transition group cursor-pointer"
-            >
-              <div className="text-xs font-bold text-emerald-900 group-hover:text-emerald-700">Portal Mahasiswa</div>
-              <div className="text-[10px] text-emerald-600/80 mt-0.5 font-mono">mhs / 123</div>
-            </button>
-          </div>
-        </div>
-
-        {/* GAS Exporter Link */}
-        <div className="text-center pt-2">
-          <button
-            onClick={onOpenGASExporter}
-            className="text-xs font-medium text-slate-500 hover:text-indigo-600 transition underline underline-offset-4"
-          >
-            Lihat Kode Standalone Google Apps Script
-          </button>
-        </div>
       </div>
     </div>
   );

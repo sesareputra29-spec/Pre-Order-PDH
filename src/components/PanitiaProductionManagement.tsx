@@ -1109,7 +1109,7 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
       {/* MODAL UPDATE PROGRES PRODUKSI */}
       {isUpdateModalOpen && selectedOrder && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-gray-100 p-6 space-y-5">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-gray-100 p-4 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
@@ -1405,7 +1405,7 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
       {/* MODAL UPDATE PROGRES MASAL PRODUKSI */}
       {isBulkUpdateModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-gray-100 p-6 space-y-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-gray-100 p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2">
                 <CheckSquare className="w-5 h-5 text-amber-600" />
