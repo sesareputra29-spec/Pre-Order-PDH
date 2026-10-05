@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, OrderRecord } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   Users,
   Search,
@@ -67,8 +67,8 @@ export const PanitiaStudentManagement: React.FC<PanitiaStudentManagementProps> =
     setLoading(true);
     try {
       const [studentsRes, ordersRes] = await Promise.all([
-        callGAS<StudentRecord[]>('getAllStudentsPanitia', user.userId),
-        callGAS<OrderRecord[]>('getAllOrdersPanitia', user.userId)
+        api.listStudents(),
+        api.getAllOrders()
       ]);
 
       if (studentsRes.success && studentsRes.data) {

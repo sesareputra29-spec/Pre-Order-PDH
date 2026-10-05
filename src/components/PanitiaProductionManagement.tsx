@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, OrderRecord, ProductionStatus, PickupStatus, PickupInfoSettings, ApiResponse } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   Factory,
   Search,
@@ -76,24 +76,14 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
   const bulkFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Helper RPC with timeout protection
-  const callWithTimeout = async <T,>(funcName: string, ...args: any[]): Promise<ApiResponse<T>> => {
-    const TIMEOUT_MS = 15000;
-    let timeoutId: any;
-
-    const timeoutPromise = new Promise<ApiResponse<T>>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        reject(new Error(`Timeout server (${TIMEOUT_MS / 1000}s) saat memproses ${funcName}.`));
-      }, TIMEOUT_MS);
-    });
-
-    try {
-      const result = await Promise.race([callGAS<T>(funcName, ...args), timeoutPromise]);
-      clearTimeout(timeoutId);
-      return result;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      throw err;
-    }
+  const callWithTimeout = async <T,>(_funcName: string, ...args: any[]): Promise<ApiResponse<T>> => {
+    const orderId = args[1];
+    const payload = args[2] || {};
+    return api.updateProductionProgress(orderId, {
+      percentage: payload.percentage,
+      production_status: payload.productionStatus,
+      notes: payload.notes
+    }) as any;
   };
 
   // Canvas-based image compression helper (Max 800px, ~50KB-100KB Base64)
@@ -280,37 +270,22 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
     setBulkSubmitting(true);
     setFeedback(null);
 
-    let successCount = 0;
-    let failCount = 0;
-    let lastError = '';
-
     const payload = {
+      order_ids: selectedOrderIds,
       percentage: bulkPercentage,
-      productionStatus: bulkStatus,
+      production_status: bulkStatus,
       notes: bulkNotes || 'Update progres masal produksi',
-      fileBase64: bulkFileBase64 || undefined,
-      fileName: bulkFileName || undefined,
-      mimeType: bulkMimeType || undefined
+      photo: bulkFileBase64 ? {
+        file_name: bulkFileName,
+        mime_type: bulkMimeType,
+        file_size: bulkFileBase64.length,
+        base64_data: bulkFileBase64
+      } : undefined
     };
 
     try {
-      for (const orderId of selectedOrderIds) {
-        try {
-          const res = await callWithTimeout<OrderRecord>('updateProductionProgress', user.userId, orderId, payload);
-          if (res && res.success) {
-            successCount++;
-          } else {
-            failCount++;
-            lastError = res?.message || `Gagal memperbarui order ${orderId}.`;
-          }
-        } catch (err: any) {
-          console.error(`Gagal update progres order ${orderId}:`, err);
-          failCount++;
-          lastError = err?.message || 'Terjadi kesalahan sistem/jaringan.';
-        }
-      }
-
-      if (successCount > 0) {
+      const res = await api.bulkUpdateProductionProgress(payload);
+      if (res && res.success) {
         // Success: Close modal, refresh data, reset selection, clear photo, notify
         setIsBulkUpdateModalOpen(false);
         setSelectedOrderIds([]);
@@ -318,13 +293,13 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
         fetchOrders();
         setFeedback({
           type: 'success',
-          message: `Progres berhasil diperbarui (${successCount} pesanan).`
+          message: res.message || `Progres ${selectedOrderIds.length} pesanan berhasil diperbarui secara masal.`
         });
       } else {
         // Fail: Keep modal open, show error message
         setFeedback({
           type: 'error',
-          message: `Gagal memperbarui progres: ${lastError || 'Terjadi kesalahan.'}`
+          message: `Gagal memperbarui progres masal: ${res?.message || 'Terjadi kesalahan.'}`
         });
       }
     } catch (err: any) {
@@ -346,7 +321,7 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const res = await callGAS<OrderRecord[]>('getProductionOrdersPanitia', user.userId);
+      const res = await api.listProductionOrders();
       if (res.success && res.data) {
         setOrders(res.data);
       }
@@ -359,7 +334,7 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
 
   const fetchPickupSettings = async () => {
     try {
-      const res = await callGAS<PickupInfoSettings>('getPickupSettings');
+      const res = await api.getPickupSettings();
       if (res.success && res.data) {
         setPickupSettings(res.data);
       }
@@ -376,7 +351,7 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
     setFeedback(null);
 
     try {
-      const res = await callGAS<PickupInfoSettings>('savePickupSettings', user.userId, pickupSettings);
+      const res = await api.savePickupSettings(pickupSettings);
       if (res.success && res.data) {
         setPickupSettings(res.data);
         setFeedback({ type: 'success', message: 'Pengaturan informasi pengambilan PDH berhasil disimpan!' });
@@ -419,7 +394,7 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
   const handleMarkSiapDiambil = async (ord: OrderRecord) => {
     setLoading(true);
     try {
-      const res = await callGAS<OrderRecord>('markOrderSiapDiambil', user.userId, ord.order_id);
+      const res = await api.markOrderSiapDiambil(ord.order_id);
       if (res.success) {
         fetchOrders();
       } else {
@@ -440,7 +415,7 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
     setFeedback(null);
 
     try {
-      const res = await callGAS<OrderRecord>('confirmOrderPickup', user.userId, selectedOrder.order_id, pickupNotesInput);
+      const res = await api.confirmOrderPickup(selectedOrder.order_id, pickupNotesInput);
       if (res.success && res.data) {
         setFeedback({ type: 'success', message: 'Pesanan berhasil dikonfirmasi sebagai SUDAH DIAMBIL.' });
         setTimeout(() => {
@@ -494,19 +469,23 @@ export const PanitiaProductionManagement: React.FC<PanitiaProductionManagementPr
     setFeedback(null);
 
     try {
-      const payload = {
+      const res = await api.updateProductionProgress(selectedOrder.order_id, {
         percentage: prodPercentage,
-        productionStatus: prodStatus,
-        notes: prodNotes,
-        fileBase64: fileBase64 || undefined,
-        fileName: fileName || undefined,
-        mimeType: mimeType || undefined
-      };
+        production_status: prodStatus,
+        notes: prodNotes
+      });
 
-      const res = await callGAS<OrderRecord>('updateProductionProgress', user.userId, selectedOrder.order_id, payload);
+      if (fileBase64) {
+        await api.uploadProductionPhoto(selectedOrder.order_id, {
+          file_name: fileName || `PROD_${selectedOrder.order_id}.jpg`,
+          mime_type: mimeType || 'image/jpeg',
+          base64_data: fileBase64,
+          notes: prodNotes
+        });
+      }
 
-      if (res.success && res.data) {
-        setFeedback({ type: 'success', message: res.message });
+      if (res.success) {
+        setFeedback({ type: 'success', message: res.message || 'Progres produksi berhasil diperbarui.' });
         setTimeout(() => {
           setIsUpdateModalOpen(false);
           fetchOrders();

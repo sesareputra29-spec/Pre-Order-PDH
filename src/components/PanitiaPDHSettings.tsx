@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, PDHMasterData, PDHInfo, PDHPricing, PDHSize, PDHPaymentInfo } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import { PanitiaPOManagement } from './PanitiaPOManagement';
 import {
   Shirt,
@@ -142,11 +142,11 @@ export const PanitiaPDHSettings: React.FC<PanitiaPDHSettingsProps> = ({ user, on
     setUploadingImage(true);
     try {
       const compressed = await compressImage(file, 800, 800, 0.75);
-      const res = await callGAS('uploadPDHDesignImage', user.userId, {
-        fileName: file.name,
-        mimeType: 'image/jpeg',
-        base64Data: compressed.base64,
-        previewUrl: compressed.base64
+      const res = await api.uploadPDHDesignImage({
+        file_name: file.name,
+        mime_type: 'image/jpeg',
+        base64_data: compressed.base64,
+        caption: file.name
       });
 
       if (res.success) {
@@ -178,11 +178,11 @@ export const PanitiaPDHSettings: React.FC<PanitiaPDHSettingsProps> = ({ user, on
     setUploadingImage(true);
     try {
       const compressed = await compressImage(file, 800, 800, 0.75);
-      const res = await callGAS('replacePDHDesignImage', user.userId, replacingImageId, {
-        fileName: file.name,
-        mimeType: 'image/jpeg',
-        base64Data: compressed.base64,
-        previewUrl: compressed.base64
+      const res = await api.replacePDHDesignImage(replacingImageId, {
+        file_name: file.name,
+        mime_type: 'image/jpeg',
+        base64_data: compressed.base64,
+        caption: file.name
       });
 
       if (res.success) {
@@ -207,7 +207,7 @@ export const PanitiaPDHSettings: React.FC<PanitiaPDHSettingsProps> = ({ user, on
 
     setUploadingImage(true);
     try {
-      const res = await callGAS('deletePDHDesignImage', user.userId, imageId);
+      const res = await api.deletePDHDesignImage(imageId);
       if (res.success) {
         showFeedback('success', 'Foto desain berhasil dihapus!');
         loadMasterData();
@@ -229,7 +229,7 @@ export const PanitiaPDHSettings: React.FC<PanitiaPDHSettingsProps> = ({ user, on
   const loadMasterData = async () => {
     setLoading(true);
     try {
-      const res = await callGAS<PDHMasterData>('getPDHMasterData');
+      const res = await api.getPDHMasterData();
       if (res.success && res.data) {
         setMasterData(res.data);
         setInfoForm(res.data.info);
@@ -253,7 +253,7 @@ export const PanitiaPDHSettings: React.FC<PanitiaPDHSettingsProps> = ({ user, on
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await callGAS('updatePDHInfo', user.userId, infoForm);
+      const res = await api.updatePDHInfo(infoForm);
       if (res.success) {
         showFeedback('success', 'Informasi & Ketentuan PDH berhasil diperbarui.');
         loadMasterData();
@@ -273,7 +273,7 @@ export const PanitiaPDHSettings: React.FC<PanitiaPDHSettingsProps> = ({ user, on
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await callGAS('updatePDHPricing', user.userId, pricingForm);
+      const res = await api.updatePDHPricing(pricingForm);
       if (res.success) {
         showFeedback('success', 'Harga Aktif PDH berhasil diperbarui.');
         loadMasterData();
@@ -294,7 +294,7 @@ export const PanitiaPDHSettings: React.FC<PanitiaPDHSettingsProps> = ({ user, on
     if (!editingSize.size_code) return;
     setSaving(true);
     try {
-      const res = await callGAS('savePDHSize', user.userId, editingSize);
+      const res = await api.savePDHSize(editingSize);
       if (res.success) {
         showFeedback('success', `Ukuran ${editingSize.size_code} berhasil disimpan.`);
         setSizeModalOpen(false);
@@ -315,7 +315,7 @@ export const PanitiaPDHSettings: React.FC<PanitiaPDHSettingsProps> = ({ user, on
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await callGAS('updatePDHPaymentInfo', user.userId, paymentForm);
+      const res = await api.updatePDHPaymentInfo(paymentForm);
       if (res.success) {
         showFeedback('success', 'Informasi Pembayaran berhasil diperbarui.');
         loadMasterData();
@@ -339,14 +339,13 @@ export const PanitiaPDHSettings: React.FC<PanitiaPDHSettingsProps> = ({ user, on
     const reader = new FileReader();
     reader.onload = async (event) => {
       const base64Data = (event.target?.result as string).split(',')[1];
-      const previewUrl = URL.createObjectURL(file);
 
       try {
-        const res = await callGAS('uploadPDHDesignImage', user.userId, {
-          fileName: file.name,
-          mimeType: file.type,
-          base64Data,
-          previewUrl
+        const res = await api.uploadPDHDesignImage({
+          file_name: file.name,
+          mime_type: file.type,
+          base64_data: base64Data,
+          caption: file.name
         });
 
         if (res.success) {

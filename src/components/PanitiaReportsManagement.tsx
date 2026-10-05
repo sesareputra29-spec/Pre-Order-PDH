@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, OrderRecord, PDHMasterData } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   generateGeneralReportPDF,
   generateKonveksiReportPDF
@@ -41,12 +41,16 @@ type ReportCategory =
   | 'produksi'
   | 'ukuran'
   | 'kelas'
+  | 'mahasiswa'
+  | 'periode'
   | 'konveksi';
 
 export const PanitiaReportsManagement: React.FC<PanitiaReportsManagementProps> = ({ user }) => {
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [masterData, setMasterData] = useState<PDHMasterData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Active Category View
@@ -71,8 +75,8 @@ export const PanitiaReportsManagement: React.FC<PanitiaReportsManagementProps> =
     setLoading(true);
     try {
       const [orderRes, masterRes] = await Promise.all([
-        callGAS<OrderRecord[]>('getAllOrdersPanitia', user.userId),
-        callGAS<PDHMasterData>('getPDHMasterData')
+        api.getAllOrders(),
+        api.getPDHMasterData()
       ]);
 
       if (orderRes.success && orderRes.data) {
@@ -468,12 +472,100 @@ export const PanitiaReportsManagement: React.FC<PanitiaReportsManagementProps> =
     window.print();
   };
 
-  const handleDownloadGeneralPDF = () => {
-    generateGeneralReportPDF(pdfOptions);
+  const handleDownloadGeneralPDF = async () => {
+    setDownloadingPdf(true);
+    setErrorMsg(null);
+    try {
+      const token = localStorage.getItem('pdh_auth_token') || localStorage.getItem('token');
+      const tenantId = (user as any).tenant_id || 'TENANT-001';
+      if (token) {
+        const queryParams = new URLSearchParams({
+          type: 'general',
+          download: 'true',
+          date_from: startDate || '',
+          date_to: endDate || '',
+          kelas: classFilter !== 'ALL' ? classFilter : '',
+          status: orderStatusFilter !== 'ALL' ? orderStatusFilter : '',
+          search: searchQuery || ''
+        });
+        const res = await fetch(`/api/reports/pdf?${queryParams.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'x-tenant-id': tenantId
+          }
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Laporan_Eksekutif_PDH_${new Date().toISOString().slice(0, 10)}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+          return;
+        }
+      }
+      generateGeneralReportPDF(pdfOptions);
+    } catch (err: any) {
+      console.error('PDF error, falling back:', err);
+      try {
+        generateGeneralReportPDF(pdfOptions);
+      } catch (fallbackErr: any) {
+        setErrorMsg('Gagal menghasilkan dokumen PDF. Silakan coba kembali.');
+      }
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
-  const handleDownloadKonveksiPDF = () => {
-    generateKonveksiReportPDF(pdfOptions);
+  const handleDownloadKonveksiPDF = async () => {
+    setDownloadingPdf(true);
+    setErrorMsg(null);
+    try {
+      const token = localStorage.getItem('pdh_auth_token') || localStorage.getItem('token');
+      const tenantId = (user as any).tenant_id || 'TENANT-001';
+      if (token) {
+        const queryParams = new URLSearchParams({
+          type: 'convection',
+          download: 'true',
+          date_from: startDate || '',
+          date_to: endDate || '',
+          kelas: classFilter !== 'ALL' ? classFilter : '',
+          status: orderStatusFilter !== 'ALL' ? orderStatusFilter : '',
+          search: searchQuery || ''
+        });
+        const res = await fetch(`/api/reports/pdf?${queryParams.toString()}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'x-tenant-id': tenantId
+          }
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `Laporan_Konveksi_PDH_${new Date().toISOString().slice(0, 10)}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+          return;
+        }
+      }
+      generateKonveksiReportPDF(pdfOptions);
+    } catch (err: any) {
+      console.error('PDF error, falling back:', err);
+      try {
+        generateKonveksiReportPDF(pdfOptions);
+      } catch (fallbackErr: any) {
+        setErrorMsg('Gagal menghasilkan dokumen PDF Konveksi. Silakan coba kembali.');
+      }
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const formatRupiah = (val: number) => {
@@ -559,22 +651,40 @@ export const PanitiaReportsManagement: React.FC<PanitiaReportsManagementProps> =
           <button
             type="button"
             onClick={handleDownloadGeneralPDF}
-            className="min-h-[44px] px-3.5 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition cursor-pointer shadow-md shadow-indigo-100"
+            disabled={downloadingPdf}
+            className="min-h-[44px] px-3.5 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition cursor-pointer shadow-md shadow-indigo-100 disabled:opacity-50"
           >
-            <Download className="w-4 h-4" />
-            <span>Unduh PDF Laporan</span>
+            {downloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            <span>{downloadingPdf ? 'Membuat PDF...' : 'Unduh PDF Laporan'}</span>
           </button>
 
           <button
             type="button"
             onClick={handleDownloadKonveksiPDF}
-            className="min-h-[44px] px-3.5 sm:px-4 py-2 bg-slate-900 hover:bg-black text-amber-300 border border-slate-700 font-bold rounded-xl text-xs flex items-center gap-2 transition cursor-pointer shadow-md"
+            disabled={downloadingPdf}
+            className="min-h-[44px] px-3.5 sm:px-4 py-2 bg-slate-900 hover:bg-black text-amber-300 border border-slate-700 font-bold rounded-xl text-xs flex items-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
           >
-            <Scissors className="w-4 h-4 text-amber-400" />
-            <span>Unduh PDF Konveksi</span>
+            {downloadingPdf ? <Loader2 className="w-4 h-4 animate-spin text-amber-400" /> : <Scissors className="w-4 h-4 text-amber-400" />}
+            <span>{downloadingPdf ? 'Membuat SPK...' : 'Unduh PDF Konveksi'}</span>
           </button>
         </div>
       </div>
+
+      {errorMsg && (
+        <div className="print:hidden bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorMsg(null)}
+            className="text-rose-600 hover:text-rose-800 font-bold px-2 py-1 rounded-md cursor-pointer"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 3. WEB VIEW: REPORT CATEGORY TAB SELECTOR                                 */}
@@ -648,6 +758,28 @@ export const PanitiaReportsManagement: React.FC<PanitiaReportsManagementProps> =
 
         <button
           type="button"
+          onClick={() => setActiveCategory('mahasiswa')}
+          className={`min-h-[40px] px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            activeCategory === 'mahasiswa' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>7. Laporan Mahasiswa</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveCategory('periode')}
+          className={`min-h-[40px] px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            activeCategory === 'periode' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>8. Laporan Periode</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveCategory('konveksi')}
           className={`min-h-[40px] px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-2 whitespace-nowrap ${
             activeCategory === 'konveksi'
@@ -656,7 +788,7 @@ export const PanitiaReportsManagement: React.FC<PanitiaReportsManagementProps> =
           }`}
         >
           <Scissors className="w-4 h-4 text-amber-500" />
-          <span>7. Laporan Produksi Konveksi</span>
+          <span>9. Laporan Produksi Konveksi</span>
         </button>
       </div>
 
@@ -1399,6 +1531,109 @@ export const PanitiaReportsManagement: React.FC<PanitiaReportsManagementProps> =
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 9B. TAB: LAPORAN MAHASISWA & STATUS PEMESANAN                              */}
+      {/* ========================================================================= */}
+      {activeCategory === 'mahasiswa' && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                <Users className="w-4 h-4 text-indigo-600" />
+                Laporan Mahasiswa &amp; Status Pemesanan PDH
+              </h3>
+              <p className="text-xs text-gray-500">Daftar rekapitulasi keikutsertaan mahasiswa dalam pengadaan seragam PDH.</p>
+            </div>
+            <span className="text-xs font-bold text-gray-600">
+              Total Terdata: <strong className="text-gray-900 font-mono">{filteredItems.length} Mahasiswa</strong>
+            </span>
+          </div>
+
+          <div className="overflow-x-auto border border-gray-200 rounded-xl max-h-96 custom-scrollbar">
+            <table className="w-full text-left text-xs text-gray-600">
+              <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-gray-200 sticky top-0">
+                <tr>
+                  <th className="p-3 text-center w-12">No.</th>
+                  <th className="p-3">NIM</th>
+                  <th className="p-3">Nama Lengkap</th>
+                  <th className="p-3">Kelas</th>
+                  <th className="p-3 text-center">Ukuran</th>
+                  <th className="p-3">Bordir Nama</th>
+                  <th className="p-3 text-center">Status Bayar</th>
+                  <th className="p-3 text-center">Status Produksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-gray-400 text-xs">
+                      Tidak ada data mahasiswa untuk kriteria filter ini.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredItems.map((it, idx) => (
+                    <tr key={`${it.order_id}-${it.nim}-${idx}`} className="hover:bg-gray-50/80 transition">
+                      <td className="p-3 text-center font-bold text-gray-400">{idx + 1}</td>
+                      <td className="p-3 font-mono font-bold text-gray-900">{it.nim}</td>
+                      <td className="p-3 font-semibold text-gray-900">{it.student_name}</td>
+                      <td className="p-3 font-bold text-gray-700">{it.class_name}</td>
+                      <td className="p-3 text-center font-black text-indigo-700">{it.size_code}</td>
+                      <td className="p-3 text-gray-800 italic">{it.custom_name || it.student_name}</td>
+                      <td className="p-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          it.payment_status === 'LUNAS'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          {it.payment_status || 'BELUM BAYAR'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center font-semibold text-gray-700">
+                        {it.production_status || 'Belum Diproses'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 9C. TAB: LAPORAN PERIODE PENGADAAN                                         */}
+      {/* ========================================================================= */}
+      {activeCategory === 'periode' && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-indigo-600" />
+                Laporan Kinerja Periode Pengadaan PDH
+              </h3>
+              <p className="text-xs text-gray-500">Statistik dan performa kuota tiap gelombang pre-order seragam.</p>
+            </div>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">
+              Collection Rate: {metrics.totalNominal > 0 ? Math.round((metrics.paidNominal / metrics.totalNominal) * 100) : 0}%
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl border border-gray-200 bg-slate-50/60 space-y-2">
+              <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Periode Aktif</div>
+              <div className="text-lg font-black text-gray-900">PO Angkatan 2026 Gelombang 1</div>
+              <div className="text-xs text-gray-600">Rentang Waktu: 01 Okt 2026 — 31 Okt 2026</div>
+              <div className="pt-2 border-t border-gray-200 grid grid-cols-2 gap-2 text-xs">
+                <div>Total Pesanan: <strong>{metrics.totalOrders} Order</strong></div>
+                <div>Total Stel: <strong>{metrics.totalPcs} Baju</strong></div>
+                <div>Tagihan: <strong>{formatRupiah(metrics.totalNominal)}</strong></div>
+                <div>Lunas: <strong className="text-emerald-600">{formatRupiah(metrics.paidNominal)}</strong></div>
+              </div>
+            </div>
           </div>
         </div>
       )}

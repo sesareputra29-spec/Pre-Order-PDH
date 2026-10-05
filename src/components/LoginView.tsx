@@ -12,22 +12,24 @@ import {
   LogIn,
   Mail,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  HelpCircle
 } from 'lucide-react';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import { User as UserType, TrackOrderResult } from '../types';
+import { HelpModal } from './HelpModal';
 
 interface LoginViewProps {
   onLoginSuccess: (user: UserType) => void;
-  onOpenGASExporter: () => void;
 }
 
-type AuthMode = 'login' | 'register' | 'forgot' | 'reset_password' | 'track';
+type AuthMode = 'login' | 'register' | 'forgot' | 'reset_password' | 'track' | 'setup_admin';
 
 const CLASS_CODE_REGEX = /^\d{2}(MJSP|MJSM|MJSE)\d{3}$/i;
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASExporter }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
 
   // Login State
   const [username, setUsername] = useState('');
@@ -35,6 +37,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Initial Admin Setup State (FASE J1-A)
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState('');
+  const [isSetupNeeded, setIsSetupNeeded] = useState(false);
 
   // Register State
   const [regNim, setRegNim] = useState('');
@@ -58,6 +67,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
 
   // Check URL query parameters for verify_token or reset_token on mount
   useEffect(() => {
+    const checkInitialSetup = async () => {
+      try {
+        const res = await api.getSetupStatus();
+        if (res.success && res.data?.is_setup_needed) {
+          setIsSetupNeeded(true);
+          setAuthMode('setup_admin');
+        }
+      } catch {}
+    };
+    checkInitialSetup();
+
     const params = new URLSearchParams(window.location.search);
     const verifyToken = params.get('verify_token') || params.get('token');
     const resetToken = params.get('reset_token');
@@ -77,7 +97,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
     setErrorMessage('');
     setSuccessMessage('');
     try {
-      const res = await callGAS('verifyAccountToken', token);
+      const res = await api.verifyAccountToken(token);
       if (res.success) {
         setSuccessMessage(res.message || 'Akun berhasil diverifikasi. Silakan login.');
         setSimVerifyLink('');
@@ -103,7 +123,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
     setSimResetLink('');
 
     try {
-      const res = await callGAS('sendPasswordResetLink', forgotNim.trim());
+      const res = await api.forgotPassword(forgotNim.trim());
       if (res.success) {
         setSuccessMessage(res.message || 'Jika akun terdaftar, link reset password akan dikirim ke email yang terdaftar.');
         if (res.data && res.data.resetLink) {
@@ -114,6 +134,56 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Terjadi kesalahan sistem.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Initial Admin Setup (FASE J1-A)
+  const handleSetupAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!adminName.trim() || !adminEmail.trim() || !adminPassword) {
+      setErrorMessage('Nama lengkap, email, dan kata sandi wajib diisi.');
+      return;
+    }
+
+    if (adminPassword.length < 6) {
+      setErrorMessage('Kata sandi minimal 6 karakter.');
+      return;
+    }
+
+    if (adminPassword !== adminConfirmPassword) {
+      setErrorMessage('Konfirmasi kata sandi tidak cocok.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.setupInitialAdmin({
+        name: adminName.trim(),
+        email: adminEmail.trim().toLowerCase(),
+        password: adminPassword,
+        confirmPassword: adminConfirmPassword
+      });
+
+      if (res.success) {
+        setSuccessMessage('Akun Panitia pertama berhasil dibuat! Silakan login untuk melanjutkan.');
+        setIsSetupNeeded(false);
+        setAuthMode('login');
+        setUsername(adminEmail.trim().toLowerCase());
+        setPassword('');
+        setAdminName('');
+        setAdminEmail('');
+        setAdminPassword('');
+        setAdminConfirmPassword('');
+      } else {
+        setErrorMessage(res.message || 'Gagal membuat akun panitia awal.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Terjadi kesalahan sistem saat membuat akun panitia.');
     } finally {
       setLoading(false);
     }
@@ -139,7 +209,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
     setSuccessMessage('');
 
     try {
-      const res = await callGAS('resetPasswordWithToken', resetTokenState, newPassword);
+      const res = await api.resetPassword(resetTokenState, newPassword);
       if (res.success) {
         setSuccessMessage(res.message || 'Password berhasil diubah. Silakan login.');
         setNewPassword('');
@@ -167,7 +237,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
     setSuccessMessage('');
 
     try {
-      const res = await callGAS<UserType>('loginUser', { username, password });
+      const res = await api.login({ username, password });
       if (res.success && res.data) {
         onLoginSuccess(res.data);
       } else {
@@ -207,7 +277,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
         password: regPassword
       };
 
-      const res = await callGAS('registerStudent', payload);
+      const res = await api.registerStudent(payload);
       if (res.success && res.data) {
         setSuccessMessage(res.message || 'Registrasi berhasil! Silakan cek email Anda untuk memverifikasi akun.');
         if (res.data.verificationLink) {
@@ -238,7 +308,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
     setTrackResult(null);
 
     try {
-      const res = await callGAS<TrackOrderResult>('trackOrderPublic', trackNim);
+      const res = await api.trackOrderPublic(trackNim);
       if (res.success && res.data) {
         setTrackResult(res.data);
       } else {
@@ -259,7 +329,20 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 flex items-center justify-center p-4 relative">
+      {/* Floating Top Right Panduan Button */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          type="button"
+          onClick={() => setHelpModalOpen(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold transition cursor-pointer border border-indigo-200 shadow-sm"
+          title="Buka Panduan Aplikasi"
+        >
+          <HelpCircle className="w-4 h-4 text-indigo-600" />
+          <span>Panduan</span>
+        </button>
+      </div>
+
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8 space-y-6">
         {/* App Logo & Title */}
         <div className="text-center space-y-2">
@@ -267,7 +350,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
             <Shirt className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">PDH Campus Order</h1>
-          <p className="text-xs text-gray-500 font-medium">Sistem Pemesanan PDH berbasis Google Apps Script Web App</p>
+          <p className="text-xs text-gray-500 font-medium">Sistem Pemesanan PDH &amp; Database Terintegrasi</p>
         </div>
 
         {/* Mode Selector Tabs */}
@@ -568,6 +651,114 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
           </form>
         )}
 
+        {/* INITIAL ADMIN SETUP FORM (FASE J1-A) */}
+        {authMode === 'setup_admin' && (
+          <form onSubmit={handleSetupAdminSubmit} className="space-y-3.5 animate-fade-in">
+            <div className="p-3.5 bg-indigo-50 border border-indigo-200 rounded-2xl space-y-1">
+              <div className="flex items-center gap-2 text-indigo-900 font-black text-xs uppercase tracking-tight">
+                <Sparkles className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                <span>Inisialisasi Administrator Panitia</span>
+              </div>
+              <p className="text-[11px] text-indigo-700 leading-relaxed">
+                Tenant prodi ini belum memiliki akun Panitia aktif. Silakan daftarkan akun administrator utama pertama untuk mulai mengelola sistem pemesanan PDH.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                Nama Lengkap Panitia
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  required
+                  placeholder="Contoh: Admin Panitia PDH"
+                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-medium"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                Email Resmi / Email Pribadi
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  required
+                  placeholder="admin.pdh@campus.ac.id"
+                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <label className="block font-bold uppercase text-gray-600 mb-1">Kata Sandi</label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="Min. 6 Karakter"
+                    className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold uppercase text-gray-600 mb-1">Konfirmasi Sandi</label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    value={adminConfirmPassword}
+                    onChange={(e) => setAdminConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="Ulangi Sandi"
+                    className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              <span>SELESAIKAN SETUP & BUAT AKUN PANITIA</span>
+            </button>
+
+            {!isSetupNeeded && (
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
+                  className="text-xs font-bold text-gray-500 hover:text-gray-800 transition cursor-pointer"
+                >
+                  ← Kembali ke Halaman Login
+                </button>
+              </div>
+            )}
+          </form>
+        )}
+
         {/* TAB 2: REGISTRASI MAHASISWA FORM (Requirement 1, 2, 8) */}
         {authMode === 'register' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-3">
@@ -779,6 +970,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onOpenGASE
           </div>
         )}
       </div>
+
+      {/* Public Landing Page Help Modal */}
+      <HelpModal
+        isOpen={helpModalOpen}
+        onClose={() => setHelpModalOpen(false)}
+        mode="PUBLIC"
+      />
     </div>
   );
 };

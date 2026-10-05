@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { User, OrderRecord } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   FileSpreadsheet,
   Upload,
@@ -163,16 +163,16 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
 
         setParsedRawRows(jsonRows);
 
-        // Analyze via Server-side Validation RPC
+        // Analyze via Server-side Validation
         if (importType === 'mahasiswa') {
-          const res = await callGAS('importStudents', user.userId, file.name, jsonRows, false);
+          const res = await api.importStudents(file.name, jsonRows, true);
           if (res.success && res.data) {
             setAnalysisResult(res.data);
           } else {
             setFeedback({ type: 'error', message: res.message || 'Gagal memvalidasi file import.' });
           }
         } else {
-          const res = await callGAS('importCollectiveMembers', user.userId, file.name, jsonRows, false);
+          const res = await api.importCollectiveMembers(file.name, jsonRows, true);
           if (res.success && res.data) {
             setAnalysisResult(res.data);
           } else {
@@ -209,22 +209,22 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
 
     try {
       if (importType === 'mahasiswa') {
-        const res = await callGAS('importStudents', user.userId, fileName, parsedRawRows, true);
+        const res = await api.importStudents(fileName, parsedRawRows, false);
         if (res.success && res.data) {
           setFeedback({
             type: 'success',
-            message: `Selesai! ${res.data.importedCount || res.data.validRowsCount} data mahasiswa berhasil diimport ke database.`
+            message: `Selesai! ${res.data.importedCount || res.data.validRowsCount || res.data.successCount} data mahasiswa berhasil diimport ke database.`
           });
           if (onRefreshAuditLogs) onRefreshAuditLogs();
         } else {
           setFeedback({ type: 'error', message: res.message || 'Gagal menyimpan data import.' });
         }
       } else {
-        const res = await callGAS('importCollectiveMembers', user.userId, fileName, parsedRawRows, true);
+        const res = await api.importCollectiveMembers(fileName, parsedRawRows, false);
         if (res.success && res.data) {
           setFeedback({
             type: 'success',
-            message: `Selesai! ${res.data.importedCount || res.data.validRowsCount} anggota pesanan kolektif berhasil dimasukkan.`
+            message: `Selesai! ${res.data.importedCount || res.data.validRowsCount || res.data.successCount} anggota pesanan kolektif berhasil dimasukkan.`
           });
           if (onRefreshAuditLogs) onRefreshAuditLogs();
         } else {
@@ -252,9 +252,7 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
       const nowStr = new Date().toISOString().split('T')[0];
 
       if (type === 'mahasiswa') {
-        const resUsers = await callGAS<any[]>('getDatabaseTables', user.userId);
-        // Fetch orders or users
-        const resAllOrders = await callGAS<OrderRecord[]>('getAllOrdersPanitia', user.userId);
+        const resAllOrders = await api.getAllOrders();
         const orders = resAllOrders.data || [];
 
         // Compile student data
@@ -288,7 +286,6 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
 
         const studentList = Array.from(studentMap.values());
         if (studentList.length === 0) {
-          // Default fallback row
           studentList.push({
             NIM: '240101001',
             'Nama Mahasiswa': 'Ahmad Mahasiswa',
@@ -301,10 +298,10 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
         }
 
         triggerExcelDownload(studentList, `Data_Mahasiswa_PDH_${nowStr}.xlsx`, 'Data_Mahasiswa');
-        await callGAS('logExportData', user.userId, 'MAHASISWA', studentList.length);
+        await api.logExportData('MAHASISWA', studentList.length);
 
       } else if (type === 'pesanan') {
-        const res = await callGAS<OrderRecord[]>('getAllOrdersPanitia', user.userId);
+        const res = await api.getAllOrders();
         const orders = res.data || [];
 
         const exportRows = orders.map((o) => ({
@@ -324,10 +321,10 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
         }));
 
         triggerExcelDownload(exportRows, `Data_Pesanan_PDH_${nowStr}.xlsx`, 'Data_Pesanan');
-        await callGAS('logExportData', user.userId, 'PESANAN', exportRows.length);
+        await api.logExportData('PESANAN', exportRows.length);
 
       } else if (type === 'kolektif') {
-        const res = await callGAS<OrderRecord[]>('getAllOrdersPanitia', user.userId);
+        const res = await api.getAllOrders();
         const orders = (res.data || []).filter((o) => o.order_type === 'KOLEKTIF');
 
         const exportRows: any[] = [];
@@ -350,10 +347,10 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
         });
 
         triggerExcelDownload(exportRows, `Anggota_Pesanan_Kolektif_${nowStr}.xlsx`, 'Anggota_Kolektif');
-        await callGAS('logExportData', user.userId, 'ANGGOTA_KOLEKTIF', exportRows.length);
+        await api.logExportData('ANGGOTA_KOLEKTIF', exportRows.length);
 
       } else if (type === 'pembayaran') {
-        const res = await callGAS<OrderRecord[]>('getAllOrdersPanitia', user.userId);
+        const res = await api.getAllOrders();
         const orders = res.data || [];
 
         const exportRows = orders.map((o) => ({
@@ -370,10 +367,10 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
         }));
 
         triggerExcelDownload(exportRows, `Data_Pembayaran_PDH_${nowStr}.xlsx`, 'Data_Pembayaran');
-        await callGAS('logExportData', user.userId, 'PEMBAYARAN', exportRows.length);
+        await api.logExportData('PEMBAYARAN', exportRows.length);
 
       } else if (type === 'produksi') {
-        const res = await callGAS<OrderRecord[]>('getProductionOrdersPanitia', user.userId);
+        const res = await api.listProductionOrders();
         const orders = res.data || [];
 
         const exportRows = orders.map((o) => ({
@@ -390,10 +387,10 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
         }));
 
         triggerExcelDownload(exportRows, `Data_Produksi_PDH_${nowStr}.xlsx`, 'Data_Produksi');
-        await callGAS('logExportData', user.userId, 'PRODUKSI', exportRows.length);
+        await api.logExportData('PRODUKSI', exportRows.length);
 
       } else if (type === 'pengambilan') {
-        const res = await callGAS<OrderRecord[]>('getProductionOrdersPanitia', user.userId);
+        const res = await api.listProductionOrders();
         const orders = res.data || [];
 
         const exportRows = orders.map((o) => ({
@@ -407,7 +404,7 @@ export const PanitiaImportExport: React.FC<PanitiaImportExportProps> = ({ user, 
         }));
 
         triggerExcelDownload(exportRows, `Data_Pengambilan_PDH_${nowStr}.xlsx`, 'Data_Pengambilan');
-        await callGAS('logExportData', user.userId, 'PENGAMBILAN', exportRows.length);
+        await api.logExportData('PENGAMBILAN', exportRows.length);
       }
 
       setFeedback({ type: 'success', message: `Export file Excel '${type.toUpperCase()}' berhasil diunduh.` });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, NotificationRecord } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   Bell,
   CheckCircle2,
@@ -40,15 +40,34 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ user
   const fetchNotifications = async () => {
     try {
       if (isPanitia) {
-        const res = await callGAS('getPanitiaAlerts', user.userId);
-        if (res.success && res.data) {
-          setPanitiaAlerts(res.data);
-        }
+        const [ordersRes, paymentsRes] = await Promise.all([
+          api.listOrders(),
+          api.listPayments()
+        ]);
+        const orders = ordersRes.data || [];
+        const payments = paymentsRes.data || [];
+        const pendingPayments = payments.filter((p: any) => p.status === 'PENDING' || p.status === 'SUBMITTED' || p.status === 'MENUNGGU VERIFIKASI').length;
+        const pendingOrders = orders.filter((o: any) => o.status === 'MENUNGGU_PEMBAYARAN' || o.payment_status === 'MENUNGGU VERIFIKASI').length;
+        const prodActive = orders.filter((o: any) => o.production_status === 'Sedang Diproduksi').length;
+        const readyPickup = orders.filter((o: any) => o.pickup_status === 'Siap Diambil').length;
+
+        setPanitiaAlerts({
+          pendingPaymentsCount: pendingPayments,
+          pendingOrdersCount: pendingOrders,
+          productionActiveCount: prodActive,
+          readyPickupCount: readyPickup,
+          alertsList: [
+            { id: 'pay', title: 'Pembayaran Menunggu Verifikasi', count: pendingPayments, type: 'PAYMENT', message: `${pendingPayments} pembayaran memerlukan verifikasi segera.` },
+            { id: 'ord', title: 'Pesanan Baru Masuk', count: pendingOrders, type: 'ORDER', message: `${pendingOrders} pesanan berstatus menunggu pembayaran/verifikasi.` },
+            { id: 'prod', title: 'Pesanan Sedang Diproduksi', count: prodActive, type: 'PRODUCTION', message: `${prodActive} pesanan sedang dalam proses jahit konveksi.` },
+            { id: 'pck', title: 'Pesanan Siap Diambil', count: readyPickup, type: 'PICKUP', message: `${readyPickup} pesanan selesai jahit dan siap diserahkan.` }
+          ]
+        });
       } else {
-        const targetIdentifier = user.nim || user.username || user.userId;
-        const res = await callGAS<NotificationRecord[]>('getStudentNotifications', targetIdentifier);
+        const res = await api.listNotifications();
         if (res.success && res.data) {
-          setNotifications(res.data);
+          const list = Array.isArray(res.data) ? res.data : (res.data as any).notifications || [];
+          setNotifications(list);
         }
       }
     } catch (err) {
@@ -79,8 +98,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ user
 
   const handleMarkAsRead = async (notifId: string) => {
     try {
-      const targetIdentifier = user.nim || user.username || user.userId;
-      await callGAS('markNotificationAsRead', targetIdentifier, notifId);
+      await api.markNotificationAsRead(notifId);
       setNotifications((prev) =>
         prev.map((n) => (n.notification_id === notifId ? { ...n, read_status: true } : n))
       );
@@ -93,8 +111,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ user
     if (isPanitia) return;
     setLoading(true);
     try {
-      const targetIdentifier = user.nim || user.username || user.userId;
-      await callGAS('markAllNotificationsAsRead', targetIdentifier);
+      await api.markAllNotificationsAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read_status: true })));
     } catch (err) {
       console.error(err);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, SheetSchemaSummary, DriveFolderStructure, AuditLogEntry, OrderRecord, POPeriod } from '../types';
-import { callGAS, isNativeGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   LayoutDashboard,
   Package,
@@ -48,16 +48,13 @@ import { PanitiaImportExport } from './PanitiaImportExport';
 import { PanitiaStudentManagement } from './PanitiaStudentManagement';
 import { PanitiaUserAccessManagement } from './PanitiaUserAccessManagement';
 import { PanitiaReportsManagement } from './PanitiaReportsManagement';
-import { PanitiaRoadmapGuide } from './PanitiaRoadmapGuide';
 
 interface PanitiaLayoutProps {
   user: User;
-  onOpenGASExporter: () => void;
 }
 
 type PanitiaTab =
   | 'dashboard'
-  | 'panduan'
   | 'pesanan'
   | 'pembayaran'
   | 'produksi'
@@ -68,7 +65,7 @@ type PanitiaTab =
   | 'user_akses'
   | 'pengaturan_sistem';
 
-export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExporter }) => {
+export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user }) => {
   const [activeTab, setActiveTabState] = useState<PanitiaTab>(() => {
     const saved = sessionStorage.getItem('pdh_panitia_active_tab');
     return (saved as PanitiaTab) || 'dashboard';
@@ -207,11 +204,11 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
     setLoading(true);
     try {
       const [tableRes, driveRes, auditRes, ordersRes, poRes] = await Promise.all([
-        callGAS<SheetSchemaSummary>('getDatabaseTables', user.userId),
-        callGAS<DriveFolderStructure>('setupDriveFolders', user.userId),
-        callGAS<AuditLogEntry[]>('getAuditLogs', user.userId),
-        callGAS<OrderRecord[]>('getAllOrdersPanitia', user.userId),
-        callGAS<POPeriod[]>('getPOPeriods', user.userId)
+        api.getDatabaseTables(),
+        api.setupDriveFolders(),
+        api.getAuditLogs({ limit: 100 }),
+        api.getAllOrders(),
+        api.listPOPeriods()
       ]);
 
       if (tableRes.success && tableRes.data) setTables(tableRes.data);
@@ -260,7 +257,7 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
   const handleInitDatabase = async () => {
     setLoading(true);
     setSystemMessage('');
-    const res = await callGAS('setupDatabase', spreadsheetIdInput);
+    const res = await api.setupDatabase(spreadsheetIdInput);
     if (res.success) {
       setSystemMessage('Database Google Sheets berhasil diinisialisasi & dihubungkan!');
       loadData();
@@ -297,12 +294,6 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
         { id: 'pengaturan_pdh', label: 'Pengaturan PDH', icon: <Shirt className="w-4 h-4" /> },
         { id: 'user_akses', label: 'User & Akses', icon: <UserCheck className="w-4 h-4" /> },
         { id: 'pengaturan_sistem', label: 'Pengaturan Sistem', icon: <Settings className="w-4 h-4" /> }
-      ]
-    },
-    {
-      group: 'BANTUAN',
-      items: [
-        { id: 'panduan', label: 'Roadmap Panduan', icon: <Compass className="w-4 h-4" /> }
       ]
     }
   ];
@@ -351,7 +342,10 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
               {grp.items.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setIsMobileSidebarOpen(false);
+                  }}
                   className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition cursor-pointer text-xs ${
                     activeTab === item.id
                       ? 'bg-indigo-600 text-white font-bold shadow-xs'
@@ -1108,10 +1102,6 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
             </div>
           )}
 
-          {activeTab === 'panduan' && (
-            <PanitiaRoadmapGuide onNavigate={(tab) => setActiveTab(tab as PanitiaTab)} />
-          )}
-
           {activeTab === 'pesanan' && (
             <PanitiaOrderManagement user={user} />
           )}
@@ -1145,7 +1135,7 @@ export const PanitiaLayout: React.FC<PanitiaLayoutProps> = ({ user, onOpenGASExp
           )}
 
           {/* Placeholders for other menus */}
-          {!['dashboard', 'panduan', 'pengaturan_sistem', 'pengaturan_pdh', 'pembayaran', 'pesanan', 'produksi', 'laporan', 'import_export', 'mahasiswa', 'user_akses'].includes(activeTab) && (
+          {!['dashboard', 'pengaturan_sistem', 'pengaturan_pdh', 'pembayaran', 'pesanan', 'produksi', 'laporan', 'import_export', 'mahasiswa', 'user_akses'].includes(activeTab) && (
             <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-xs text-center space-y-3">
               <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mx-auto">
                 <Layers className="w-6 h-6" />

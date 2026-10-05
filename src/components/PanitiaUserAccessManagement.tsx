@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   UserCheck,
   Search,
@@ -102,12 +102,23 @@ export const PanitiaUserAccessManagement: React.FC<PanitiaUserProps> = ({ user }
     setLoading(true);
     try {
       const [panitiaRes, studentRes] = await Promise.all([
-        callGAS<any[]>('getAllPanitiaUsers', user.userId),
-        callGAS<StudentUserAccount[]>('getAllStudentsPanitia', user.userId)
+        api.listUsers({ role: 'PANITIA' }),
+        api.listStudents()
       ]);
 
       if (panitiaRes.success && panitiaRes.data) {
-        const panitiaOnly = panitiaRes.data.filter((u: any) => u.role === 'PANITIA') as PanitiaUserAccount[];
+        const panitiaOnly = panitiaRes.data
+          .filter((u: any) => u.role === 'PANITIA')
+          .map((u: any) => ({
+            user_id: u.userId || u.user_id || '',
+            username: u.username || '',
+            name: u.name || '',
+            email: u.email || '',
+            role: 'PANITIA',
+            status: u.status || 'ACTIVE',
+            created_at: u.createdAt || u.created_at || '',
+            updated_at: u.updatedAt || u.updated_at || ''
+          })) as PanitiaUserAccount[];
         setPanitiaUsers(panitiaOnly);
       }
 
@@ -152,7 +163,7 @@ export const PanitiaUserAccessManagement: React.FC<PanitiaUserProps> = ({ user }
         role: 'PANITIA'
       };
 
-      const res = await callGAS('createPanitiaUser', user.userId, payload);
+      const res = await api.createUser(payload);
       if (res.success) {
         setToast({ type: 'success', message: res.message || 'User Panitia baru berhasil ditambahkan!' });
         setAddUserModalOpen(false);
@@ -189,7 +200,7 @@ export const PanitiaUserAccessManagement: React.FC<PanitiaUserProps> = ({ user }
         email: editEmail.trim().toLowerCase()
       };
 
-      const res = await callGAS('updatePanitiaUser', user.userId, editPanitiaModalUser.user_id, payload);
+      const res = await api.updateUser(editPanitiaModalUser.user_id, payload);
       if (res.success) {
         setToast({ type: 'success', message: 'Data user panitia berhasil diperbarui!' });
         setEditPanitiaModalUser(null);
@@ -220,7 +231,7 @@ export const PanitiaUserAccessManagement: React.FC<PanitiaUserProps> = ({ user }
 
     setSubmitting(true);
     try {
-      const res = await callGAS('togglePanitiaUserStatus', user.userId, targetUser.user_id, nextStatus);
+      const res = await api.toggleUserStatus(targetUser.user_id, nextStatus);
       if (res.success) {
         setToast({
           type: 'success',
@@ -248,7 +259,7 @@ export const PanitiaUserAccessManagement: React.FC<PanitiaUserProps> = ({ user }
 
     setSubmitting(true);
     try {
-      const res = await callGAS('togglePanitiaUserStatus', user.userId, targetStudent.user_id || targetStudent.nim || targetStudent.username, nextStatus);
+      const res = await api.toggleUserStatus(targetStudent.user_id || targetStudent.nim || targetStudent.username, nextStatus);
       if (res.success) {
         setToast({
           type: 'success',
@@ -282,12 +293,9 @@ export const PanitiaUserAccessManagement: React.FC<PanitiaUserProps> = ({ user }
 
     setSubmitting(true);
     try {
-      const res = await callGAS(
-        'resetPanitiaUserPassword',
-        user.userId,
+      const res = await api.resetUserPasswordByAdmin(
         resetPasswordUser.user_id,
-        resetPassword,
-        resetConfirmPassword
+        resetPassword
       );
 
       if (res.success) {

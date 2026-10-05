@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, OrderRecord, OrderItemRecord, PDHMasterData } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   Package,
   Search,
@@ -70,8 +70,8 @@ export const PanitiaOrderManagement: React.FC<PanitiaOrderManagementProps> = ({ 
     setLoading(true);
     try {
       const [ordersRes, masterRes] = await Promise.all([
-        callGAS<OrderRecord[]>('getAllOrdersPanitia', user.userId),
-        callGAS<PDHMasterData>('getPDHMasterData')
+        api.listOrders(),
+        api.getPDHMasterData()
       ]);
 
       if (ordersRes.success && ordersRes.data) setOrders(ordersRes.data);
@@ -134,7 +134,7 @@ export const PanitiaOrderManagement: React.FC<PanitiaOrderManagementProps> = ({ 
         items: editFormItems
       };
 
-      const res = await callGAS('updateOrderDetails', user.userId, editModalOrder.order_id, payload);
+      const res = await api.updateOrderDetails(editModalOrder.order_id, payload);
       if (res.success) {
         setToast({ type: 'success', message: 'Data pesanan berhasil dikoreksi dan dicatat di Audit Log.' });
         setEditModalOrder(null);
@@ -153,7 +153,7 @@ export const PanitiaOrderManagement: React.FC<PanitiaOrderManagementProps> = ({ 
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     setSubmitting(true);
     try {
-      const res = await callGAS('updateOrderStatus', user.userId, orderId, newStatus);
+      const res = await api.updateOrderStatus(orderId, newStatus);
       if (res.success) {
         setToast({ type: 'success', message: `Status pesanan berhasil diperbarui menjadi ${newStatus}.` });
         loadData();
@@ -177,7 +177,7 @@ export const PanitiaOrderManagement: React.FC<PanitiaOrderManagementProps> = ({ 
 
     setSubmitting(true);
     try {
-      const res = await callGAS('cancelOrder', user.userId, cancelModalOrder.order_id, cancelReason);
+      const res = await api.cancelOrder(cancelModalOrder.order_id, cancelReason);
       if (res.success) {
         setToast({ type: 'success', message: 'Pesanan telah dibatalkan. Data tetap tersimpan di database.' });
         setCancelModalOrder(null);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, OrderRecord, PickupInfoSettings, PickupStatus } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   Factory,
   Clock,
@@ -16,7 +16,9 @@ import {
   Sparkles,
   Calendar,
   Phone,
-  Info
+  Info,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 
 interface StudentProductionProgressProps {
@@ -27,6 +29,7 @@ export const StudentProductionProgress: React.FC<StudentProductionProgressProps>
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [pickupSettings, setPickupSettings] = useState<PickupInfoSettings | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
   const [activePhotoModalUrl, setActivePhotoModalUrl] = useState<string | null>(null);
 
@@ -36,16 +39,25 @@ export const StudentProductionProgress: React.FC<StudentProductionProgressProps>
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [ordRes, pickupRes] = await Promise.all([
-        callGAS<OrderRecord[]>('getStudentOrders', user.userId),
-        callGAS<PickupInfoSettings>('getPickupSettings')
+        api.getStudentOrders(user.nim || user.username || user.userId),
+        api.getPickupSettings()
       ]);
 
-      if (ordRes.success && ordRes.data) setOrders(ordRes.data);
-      if (pickupRes.success && pickupRes.data) setPickupSettings(pickupRes.data);
-    } catch (err) {
+      if (ordRes.success && ordRes.data) {
+        setOrders(ordRes.data);
+      } else if (!ordRes.success) {
+        setError(ordRes.message || 'Gagal memuat pesanan mahasiswa.');
+      }
+
+      if (pickupRes.success && pickupRes.data) {
+        setPickupSettings(pickupRes.data);
+      }
+    } catch (err: any) {
       console.error('Gagal memuat data progres & pengambilan:', err);
+      setError(err?.message || 'Gagal memuat data progres.');
     } finally {
       setLoading(false);
     }
@@ -146,6 +158,24 @@ export const StudentProductionProgress: React.FC<StudentProductionProgressProps>
           Lacak tahapan pengerjaan vendor, persentase progres, serta lokasi &amp; jadwal resmi pengambilan PDH setelah selesai diproduksi.
         </p>
       </div>
+
+      {/* Error State */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-between text-red-700 text-xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 shrink-0 text-red-600" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchData}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Coba Lagi
+          </button>
+        </div>
+      )}
 
       {/* Orders Progress Cards */}
       {loading ? (

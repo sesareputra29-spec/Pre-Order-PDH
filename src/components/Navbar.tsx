@@ -1,16 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../types';
-import { Shirt, LogOut, Code, Shield, UserCheck, Key, User as UserIcon, ChevronDown, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Shirt, LogOut, Code, Shield, UserCheck, Key, User as UserIcon, ChevronDown, X, CheckCircle2, AlertCircle, Loader2, HelpCircle } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
-import { callGAS } from '../gas/gasBridge';
+import { HelpModal } from './HelpModal';
+import { api } from '../services/apiClient';
 
 interface NavbarProps {
   user: User | null;
   onLogout: () => void;
-  onOpenGASExporter: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenGASExporter }) => {
+export const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   if (!user) return null;
 
   const isPanitia = user.role === 'PANITIA';
@@ -18,6 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenGASExporte
   // Account Menu Popover State
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
 
   // Change Password Form State
   const [oldPassword, setOldPassword] = useState('');
@@ -54,8 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenGASExporte
     setPasswordFeedback(null);
 
     try {
-      // In simulator or GAS, we update user password
-      const res = await callGAS('resetPasswordWithToken', user.userId, newPassword);
+      const res = await api.changePassword(oldPassword, newPassword);
       if (res.success) {
         setPasswordFeedback({ type: 'success', message: 'Password berhasil diperbarui!' });
         setTimeout(() => {
@@ -105,6 +105,22 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenGASExporte
 
       {/* User Actions */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+        {/* Help / Panduan Modal Button */}
+        <button
+          type="button"
+          onClick={() => setHelpModalOpen(true)}
+          className={`min-h-[44px] px-2.5 sm:px-3 py-2 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+            isPanitia
+              ? 'bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+              : 'bg-emerald-50/80 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+          }`}
+          title="Buka Panduan Aplikasi"
+          aria-label="Panduan"
+        >
+          <HelpCircle className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">Panduan</span>
+        </button>
+
         {/* Notification Bell Dropdown */}
         <NotificationDropdown user={user} />
 
@@ -250,6 +266,13 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenGASExporte
           </div>
         </div>
       )}
+
+      {/* Global Authenticated Help Modal for Panitia or Mahasiswa */}
+      <HelpModal
+        isOpen={helpModalOpen}
+        onClose={() => setHelpModalOpen(false)}
+        mode={isPanitia ? 'PANITIA' : 'MAHASISWA'}
+      />
     </header>
   );
 };

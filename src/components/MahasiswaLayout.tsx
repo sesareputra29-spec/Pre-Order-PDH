@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, OrderType, PDHMasterData, POPeriod } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   Home,
   ShoppingBag,
@@ -33,13 +33,12 @@ import {
 import { StudentOrderForm } from './StudentOrderForm';
 import { StudentOrderHistory } from './StudentOrderHistory';
 import { StudentProductionProgress } from './StudentProductionProgress';
-import { StudentRoadmapGuide } from './StudentRoadmapGuide';
 
 interface MahasiswaLayoutProps {
   user: User;
 }
 
-type MahasiswaTab = 'beranda' | 'panduan' | 'pesan' | 'pesanan_saya' | 'pembayaran' | 'progres';
+type MahasiswaTab = 'beranda' | 'pesan' | 'pesanan_pembayaran' | 'progres';
 
 export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
   const [activeTab, setActiveTab] = useState<MahasiswaTab>('beranda');
@@ -58,8 +57,8 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
     setLoading(true);
     try {
       const [masterRes, poRes] = await Promise.all([
-        callGAS<PDHMasterData>('getPDHMasterData'),
-        callGAS<POPeriod & { isOpen: boolean }>('getActivePOPeriod')
+        api.getPDHMasterData(),
+        api.getActivePOPeriod()
       ]);
 
       if (masterRes.success && masterRes.data) setMasterData(masterRes.data);
@@ -101,19 +100,17 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
   }, [activePO]);
 
 
-  const navItems: { id: MahasiswaTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'beranda', label: 'Beranda', icon: <Home className="w-4 h-4" /> },
-    { id: 'pesan', label: 'Pesan PDH', icon: <ShoppingBag className="w-4 h-4" /> },
-    { id: 'pesanan_saya', label: 'Pesanan Saya', icon: <Clock className="w-4 h-4" /> },
-    { id: 'pembayaran', label: 'Pembayaran', icon: <CreditCard className="w-4 h-4" /> },
-    { id: 'progres', label: 'Progres PDH', icon: <Activity className="w-4 h-4" /> },
-    { id: 'panduan', label: 'Panduan & Roadmap', icon: <Compass className="w-4 h-4" /> }
+  const navItems: { id: MahasiswaTab; label: string; shortLabel: string; icon: React.ReactNode }[] = [
+    { id: 'beranda', label: 'Beranda', shortLabel: 'Beranda', icon: <Home className="w-5 h-5 md:w-4 md:h-4" /> },
+    { id: 'pesan', label: 'Pesan PDH', shortLabel: 'Pesan', icon: <ShoppingBag className="w-5 h-5 md:w-4 md:h-4" /> },
+    { id: 'pesanan_pembayaran', label: 'Pesanan & Pembayaran', shortLabel: 'Pesanan', icon: <CreditCard className="w-5 h-5 md:w-4 md:h-4" /> },
+    { id: 'progres', label: 'Progres PDH', shortLabel: 'Progres', icon: <Activity className="w-5 h-5 md:w-4 md:h-4" /> }
   ];
 
   return (
-    <div className="min-h-[calc(100vh-61px)] bg-gray-50 flex flex-col">
-      {/* Navigation Bar */}
-      <nav className="bg-white border-b border-gray-200 px-4 sm:px-6 flex gap-2 overflow-x-auto text-xs font-semibold shadow-2xs sticky top-[61px] z-20">
+    <div className="min-h-[calc(100vh-61px)] bg-gray-50 flex flex-col relative">
+      {/* Desktop Top Navigation Bar (Hidden on Mobile/Tablet) */}
+      <nav className="hidden md:flex bg-white border-b border-gray-200 px-4 sm:px-6 gap-2 overflow-x-auto text-xs font-semibold shadow-2xs sticky top-[61px] z-20">
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -130,8 +127,11 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
         ))}
       </nav>
 
-      {/* Workspace Content */}
-      <main className="flex-1 p-4 sm:p-6 max-w-4xl mx-auto w-full space-y-6">
+      {/* Workspace Content with ample bottom padding to guarantee bottom bar never covers any content */}
+      <main
+        className="flex-1 p-4 sm:p-6 max-w-4xl mx-auto w-full space-y-6 pb-36 sm:pb-40 md:pb-12"
+        style={{ paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 16px) + 36px)' }}
+      >
         {activeTab === 'beranda' && (
           <div className="space-y-6">
             {/* Welcome Banner */}
@@ -219,7 +219,7 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
                       <div className="bg-slate-100 p-4 sm:p-6 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-200">
                         <div className="w-full aspect-4/3 sm:aspect-square rounded-xl overflow-hidden shadow-xs relative">
                           <img
-                            src={masterData.images[0]?.file_url || 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=800&q=80'}
+                            src={masterData?.images?.[0]?.file_url || 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=800&q=80'}
                             alt="Desain PDH Kampus"
                             className="w-full h-full object-cover"
                           />
@@ -417,17 +417,13 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
           </div>
         )}
 
-        {activeTab === 'panduan' && (
-          <StudentRoadmapGuide user={user} onNavigate={(tab) => setActiveTab(tab as MahasiswaTab)} />
-        )}
-
         {activeTab === 'pesan' && (
           masterData ? (
             <StudentOrderForm
               user={user}
               masterData={masterData}
               activePO={activePO}
-              onOrderSuccess={() => setActiveTab('pesanan_saya')}
+              onOrderSuccess={() => setActiveTab('pesanan_pembayaran')}
             />
           ) : (
             <div className="p-8 text-center bg-white rounded-2xl border border-gray-200">
@@ -437,7 +433,7 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
           )
         )}
 
-        {(activeTab === 'pesanan_saya' || activeTab === 'pembayaran') && (
+        {activeTab === 'pesanan_pembayaran' && (
           <StudentOrderHistory user={user} masterData={masterData} />
         )}
 
@@ -446,7 +442,7 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
         )}
 
         {/* Placeholders for other Mahasiswa views */}
-        {!['beranda', 'panduan', 'pesan', 'pesanan_saya', 'pembayaran', 'progres'].includes(activeTab) && (
+        {!['beranda', 'pesan', 'pesanan_pembayaran', 'progres'].includes(activeTab) && (
           <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-xs text-center space-y-3">
             <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mx-auto">
               <Shirt className="w-6 h-6" />
@@ -458,6 +454,52 @@ export const MahasiswaLayout: React.FC<MahasiswaLayoutProps> = ({ user }) => {
           </div>
         )}
       </main>
+
+      {/* Mobile & Tablet Fixed Bottom Navigation Bar */}
+      <nav
+        aria-label="Navigasi Utama Mahasiswa"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200/90 shadow-2xl px-1.5 py-1.5 flex items-center justify-around"
+        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
+      >
+        {navItems.map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setActiveTab(item.id);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`min-h-[46px] flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl transition cursor-pointer relative select-none ${
+                isActive
+                  ? 'text-emerald-700'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              <div
+                className={`p-1.5 rounded-xl transition-all ${
+                  isActive
+                    ? 'bg-emerald-100/90 text-emerald-800 scale-110 shadow-2xs'
+                    : 'text-gray-500 hover:bg-gray-100/60'
+                }`}
+              >
+                {item.icon}
+              </div>
+              <span
+                className={`text-[10px] tracking-tight leading-tight mt-0.5 truncate max-w-[54px] ${
+                  isActive ? 'font-black text-emerald-800' : 'font-semibold'
+                }`}
+              >
+                {item.shortLabel}
+              </span>
+              {isActive && (
+                <span className="w-1 h-1 bg-emerald-600 rounded-full mt-0.5 animate-pulse" />
+              )}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 };
@@ -473,8 +515,7 @@ const StudentNotificationView: React.FC<{ user: User }> = ({ user }) => {
   const loadNotifs = async () => {
     setLoading(true);
     try {
-      const targetIdentifier = user.nim || user.username || user.userId;
-      const res = await callGAS('getStudentNotifications', targetIdentifier);
+      const res = await api.listNotifications();
       if (res.success && res.data) {
         setNotifications(res.data);
       }
@@ -487,8 +528,7 @@ const StudentNotificationView: React.FC<{ user: User }> = ({ user }) => {
 
   const handleMarkAllRead = async () => {
     try {
-      const targetIdentifier = user.nim || user.username || user.userId;
-      await callGAS('markAllNotificationsAsRead', targetIdentifier);
+      await api.markAllNotificationsAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read_status: true })));
     } catch (e) {
       console.error(e);

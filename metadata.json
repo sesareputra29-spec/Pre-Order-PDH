@@ -1,6 +1,6 @@
 {
   "name": "PDH Campus Order",
-  "description": "Sistem Pemesanan PDH Kampus berbasis Google Apps Script Web App dengan Portal Panitia dan Portal Mahasiswa.",
+  "description": "Sistem Pemesanan PDH Kampus berbasis Vercel API (Express Node.js) final dengan sinkronisasi Google Sheets & Drive.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

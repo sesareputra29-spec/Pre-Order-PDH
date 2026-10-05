@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { User, OrderType, PDHMasterData, POPeriod, OrderItemInput, OrderPayload } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   UserCheck,
   Users,
@@ -51,23 +51,23 @@ export const StudentOrderForm: React.FC<StudentOrderFormProps> = ({
   const [orderType, setOrderType] = useState<OrderType>('PRIBADI');
 
   // Buyer Penanggung Jawab Form
-  const [buyerName, setBuyerName] = useState(user.name || 'Ahmad Mahasiswa');
-  const [buyerNim, setBuyerNim] = useState('2026101001');
-  const [buyerClass, setBuyerClass] = useState('01MJSP001');
-  const [buyerWhatsapp, setBuyerWhatsapp] = useState('081234567890');
+  const [buyerName, setBuyerName] = useState(user.name || '');
+  const [buyerNim, setBuyerNim] = useState(user.nim || user.username || '');
+  const [buyerClass, setBuyerClass] = useState(user.className || (user as any).class_name || '');
+  const [buyerWhatsapp, setBuyerWhatsapp] = useState((user as any).phone || '');
   const [notes, setNotes] = useState('');
 
   // Items State (For PRIBADI: 1 item; For KOLEKTIF: N items)
   const [singleSize, setSingleSize] = useState('M');
-  const [singleCustomName, setSingleCustomName] = useState(user.name || 'Ahmad Mahasiswa');
+  const [singleCustomName, setSingleCustomName] = useState(user.name || '');
 
   const [collectiveMembers, setCollectiveMembers] = useState<OrderItemInput[]>([
     {
-      fullName: user.name || 'Ahmad Mahasiswa',
-      nim: '2026101001',
-      className: '01MJSP001',
+      fullName: user.name || '',
+      nim: user.nim || user.username || '',
+      className: user.className || (user as any).class_name || '',
       sizeCode: 'M',
-      customName: user.name || 'Ahmad Mahasiswa',
+      customName: user.name || '',
       quantity: 1
     }
   ]);
@@ -383,7 +383,7 @@ export const StudentOrderForm: React.FC<StudentOrderFormProps> = ({
         items: itemsList
       };
 
-      const res = await callGAS('createOrder', user.userId, payload);
+      const res = await api.createOrder(payload);
       setConfirmModalOpen(false);
 
       if (res.success && res.data) {

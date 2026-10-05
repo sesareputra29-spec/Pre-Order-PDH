@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, POPeriod, POMode, POStatus } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   Calendar,
   Clock,
@@ -54,8 +54,8 @@ export const PanitiaPOManagement: React.FC<PanitiaPOManagementProps> = ({ user, 
     setLoading(true);
     try {
       const [activeRes, allRes] = await Promise.all([
-        callGAS<POPeriod & { isOpen: boolean }>('getActivePOPeriod'),
-        callGAS<POPeriod[]>('getAllPOPeriods')
+        api.getActivePOPeriod(),
+        api.getAllPOPeriods()
       ]);
 
       if (activeRes.success && activeRes.data) {
@@ -81,7 +81,7 @@ export const PanitiaPOManagement: React.FC<PanitiaPOManagementProps> = ({ user, 
     setSaving(true);
     setConfirmModal(null);
     try {
-      const res = await callGAS('togglePOStatus', user.userId, activePO.period_id, targetStatus);
+      const res = await api.togglePOStatus(activePO.period_id, targetStatus);
       if (res.success) {
         showFeedback('success', `Status Pre-Order berhasil diubah menjadi ${targetStatus === 'OPEN' ? 'DIBUKA (🟢)' : 'DITUTUP (🔴)'}.`);
         loadData();
@@ -100,7 +100,7 @@ export const PanitiaPOManagement: React.FC<PanitiaPOManagementProps> = ({ user, 
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await callGAS('savePOPeriod', user.userId, poForm);
+      const res = await api.savePOPeriod(poForm);
       if (res.success) {
         showFeedback('success', `Periode PO ${poForm.name} berhasil disimpan.`);
         setPoFormOpen(false);

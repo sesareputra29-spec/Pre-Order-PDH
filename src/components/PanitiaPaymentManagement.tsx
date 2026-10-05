@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, OrderRecord } from '../types';
-import { callGAS } from '../gas/gasBridge';
+import { api } from '../services/apiClient';
 import {
   CreditCard,
   CheckCircle2,
@@ -47,7 +47,7 @@ export const PanitiaPaymentManagement: React.FC<PanitiaPaymentManagementProps> =
   const loadPayments = async () => {
     setLoading(true);
     try {
-      const res = await callGAS<OrderRecord[]>('getAllPayments', user.userId);
+      const res = await api.listPayments();
       if (res.success && res.data) {
         setPayments(res.data);
       }
@@ -70,7 +70,7 @@ export const PanitiaPaymentManagement: React.FC<PanitiaPaymentManagementProps> =
     setToast(null);
 
     try {
-      const res = await callGAS('approvePayment', user.userId, selectedApproveOrderId);
+      const res = await api.approvePayment(selectedApproveOrderId);
       if (res.success) {
         setToast({ type: 'success', message: 'Pembayaran berhasil disetujui.' });
         setApproveModalOpen(false);
@@ -101,7 +101,7 @@ export const PanitiaPaymentManagement: React.FC<PanitiaPaymentManagementProps> =
 
     setSubmitting(true);
     try {
-      const res = await callGAS('rejectPayment', user.userId, selectedOrderId, rejectionReason);
+      const res = await api.rejectPayment(selectedOrderId, rejectionReason);
       if (res.success) {
         setToast({ type: 'success', message: 'Pembayaran telah ditolak dan catatan alasan telah disimpan.' });
         setRejectModalOpen(false);
